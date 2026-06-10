@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>客户信息管理</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #f5f6fa;
+  color: #1a1a2e;
+  min-height: 100vh;
+}
+
+/* ── 顶栏 ── */
+header {
+  background: #fff;
+  border-bottom: 1px solid #e8e8ee;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+}
+.logo { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.logo i { font-size: 20px; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.save-path {
+  font-size: 12px;
+  color: #888;
+  background: #f0f0f5;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+/* ── 按钮 ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; border: none; transition: .15s; white-space: nowrap;
+}
+.btn-primary { background: #4f46e5; color: #fff; }
+.btn-primary:hover { background: #4338ca; }
+.btn-outline { background: #fff; color: #4f46e5; border: 1.5px solid #c7d2fe; }
+.btn-outline:hover { background: #eef2ff; }
+.btn-ghost { background: #fff; color: #666; border: 1px solid #e0e0e8; }
+.btn-ghost:hover { background: #f8f8fc; }
+
+/* ── 主区域 ── */
+main { max-width: 1000px; margin: 0 auto; padding: 24px 20px 60px; }
+
+/* ── 操作栏 ── */
+.toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
+}
+.toolbar-left { display: flex; gap: 10px; }
+
+.search-box {
+  display: flex; align-items: center; border: 1px solid #e0e0e8;
+  border-radius: 8px; background: #fff; padding: 0 12px; gap: 6px;
+}
+.search-box input {
+  border: none; outline: none; padding: 8px 0; width: 180px; font-size: 13px;
+}
+.search-box span { color: #aaa; font-size: 14px; }
+
+/* ── 统计行 ── */
+.stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px;
+}
+.stat-card {
+  background: #fff; border-radius: 12px; padding: 18px 20px;
+  border: 1px solid #e8e8ee;
+}
+.stat-card .label { font-size: 12px; color: #888; margin-bottom: 6px; }
+.stat-card .val { font-size: 24px; font-weight: 800; color: #1a1a2e; }
+.stat-card .val.highlight { color: #4f46e5; }
+
+/* ── 表格 ── */
+.table-warp {
+  background: #fff; border-radius: 12px; border: 1px solid #e8e8ee; overflow: hidden;
+}
+.table-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid #f0f0f5;
+}
+.table-top h3 { font-size: 15px; font-weight: 700; }
+.table-top .count { font-size: 12px; color: #888; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  background: #fafafc; padding: 10px 16px; text-align: left;
+  font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase;
+  letter-spacing: .3px; border-bottom: 1px solid #e8e8ee;
+}
+tbody td { padding: 12px 16px; border-bottom: 1px solid #f5f5fa; color: #333; }
+tbody tr:hover { background: #fafafe; }
+tbody tr:last-child td { border-bottom: none; }
+.cust-name { font-weight: 600; color: #1a1a2e; }
+.row-actions { display: flex; gap: 8px; }
+.row-btn {
+  font-size: 11px; cursor: pointer; border: none; background: none;
+  padding: 2px 6px; border-radius: 4px;
+}
+.row-btn.edit { color: #4f46e5; }
+.row-btn.edit:hover { background: #eef2ff; }
+.row-btn.del { color: #dc2626; }
+.row-btn.del:hover { background: #fef2f2; }
+
+/* ── 空状态 ── */
+.empty { text-align: center; padding: 60px 20px; color: #b0b0b8; }
+.empty .icon { font-size: 44px; margin-bottom: 10px; }
+
+/* ── 弹窗 ── */
+.overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35);
+  z-index: 200; align-items: center; justify-content: center;
+}
+.overlay.show { display: flex; }
+.modal {
+  background: #fff; border-radius: 16px; padding: 32px; width: 460px;
+  max-width: 94vw; box-shadow: 0 20px 60px rgba(0,0,0,.12);
+}
+.modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: center; }
+.modal-close { cursor: pointer; border: none; background: #f0f0f5; width: 30px; height: 30px; border-radius: 6px; font-size: 16px; color: #666; display: flex; align-items: center; justify-content: center; }
+.modal-close:hover { background: #e0e0e8; }
+
+.form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.form-group label { font-size: 12px; font-weight: 600; color: #666; }
+.form-group input, .form-group select {
+  padding: 10px 12px; border: 1px solid #e0e0e8; border-radius: 8px;
+  font-size: 14px; outline: none; font-family: inherit;
+}
+.form-group input:focus, .form-group select:focus { border-color: #4f46e5; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+/* ── CSV 上传区 ── */
+.drop-area {
+  border: 2px dashed #c7d2fe; border-radius: 12px; padding: 28px;
+  text-align: center; background: #eef2ff; margin-bottom: 20px;
+  cursor: pointer; transition: .15s;
+}
+.drop-area:hover { background: #e0e7ff; }
+.drop-area .icon { font-size: 36px; margin-bottom: 8px; }
+.drop-area p { font-size: 13px; color: #666; }
+.drop-area strong { color: #4f46e5; }
+.drop-area .hint { font-size: 11px; color: #aaa; margin-top: 4px; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 28px; right: 28px; background: #1a1a2e; color: #fff;
+  padding: 12px 22px; border-radius: 10px; font-size: 13px;
+  opacity: 0; transform: translateY(10px); transition: .25s;
+  z-index: 999; pointer-events: none; display: flex; align-items: center; gap: 8px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── 响应式 ── */
+@media (max-width: 640px) {
+  .stats { grid-template-columns: 1fr 1fr; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  main { padding: 16px 12px 48px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 顶栏 -->
+<header>
+  <div class="logo">📋 客户信息管理</div>
+  <div class="header-actions">
+    <span class="save-path" id="baiduBadge" style="cursor:pointer;" onclick="handleBaiduBind()" title="点击绑定/管理百度网盘">☁️ 检测中…</span>
+    <span class="save-path">💾 E:\新建文件夹\customers.json</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- 搜索栏 -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <div class="search-box">
+        <span>🔍</span>
+        <input id="searchInput" type="text" placeholder="搜索姓名/号码/套餐…" oninput="search()">
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV 上传 -->
+  <div class="drop-area" id="dropArea" onclick="document.getElementById('csvInput').click()">
+    <div class="icon">📂</div>
+    <p>拖拽 CSV 文件到此处，或 <strong>点击选择文件</strong> 批量导入</p>
+    <p class="hint">CSV 格式：姓名,手机号,套餐 (首行为列头)</p>
+    <input type="file" id="csvInput" accept=".csv" style="display:none" onchange="handleCSV(event)">
+  </div>
+
+  <!-- 统计 -->
+  <div class="stats">
+    <div class="stat-card"><div class="label">👥 客户总数</div><div class="val highlight" id="statCount">0</div></div>
+    <div class="stat-card"><div class="label">📱 有效号码</div><div class="val" id="statPhone">0</div></div>
+    <div class="stat-card"><div class="label">📦 套餐种类</div><div class="val" id="statPkg">0</div></div>
+    <div class="stat-card"><div class="label">📅 最近添加</div><div class="val" style="font-size:15px;" id="statRecent">—</div></div>
+  </div>
+
+  <!-- 表格 -->
+  <div class="table-warp">
+    <div class="table-top">
+      <h3>客户列表 <span class="count" id="tableCount">(0 条记录)</span></h3>
+      <div>
+        <button class="btn btn-ghost" onclick="exportExcel()" style="font-size:12px;padding:6px 14px;">📊 导出 Excel</button>
+        <button class="btn btn-ghost" onclick="exportToBaidu()" id="btnBaiduExport" style="font-size:12px;padding:6px 14px;" title="上传 Excel 到百度网盘">☁️ 导出到网盘</button>
+        <button class="btn btn-ghost" onclick="exportJSON()" style="font-size:12px;padding:6px 14px;">💾 保存 JSON</button>
+        <button class="btn btn-primary" onclick="openModal()" style="font-size:12px;padding:6px 16px;">＋ 新增客户</button>
+      </div>
+    </div>
+    <div id="tableContainer">
+      <div class="empty"><div class="icon">📭</div><p>暂无客户数据，上传 CSV 或手动添加</p></div>
+    </div>
+  </div>
+</main>
+
+<!-- 新增/编辑弹窗 -->
+<div class="overlay" id="modal">
+  <div class="modal">
+    <h2><span id="modalTitle">＋ 新增客户</span><button class="modal-close" onclick="closeModal()">✕</button></h2>
+    <div class="form-group">
+      <label>客户姓名 *</label>
+      <input type="text" id="fName" placeholder="如：张三">
+    </div>
+    <div class="form-group">
+      <label>手机号码 *</label>
+      <input type="text" id="fPhone" placeholder="如：13800138000">
+    </div>
+    <div class="form-group">
+      <label>套餐</label>
+      <select id="fPlan">
+        <option value="">请选择</option>
+        <option value="基础版">基础版 (99元/月)</option>
+        <option value="进阶版">进阶版 (199元/月)</option>
+        <option value="旗舰版">旗舰版 (399元/月)</option>
+        <option value="企业版">企业版 (999元/月)</option>
+        <option value="定制版">定制版 (面议)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>备注</label>
+      <input type="text" id="fNote" placeholder="可选…">
+    </div>
+    <input type="hidden" id="fEditId">
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveCustomer()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- SheetJS CDN（前端生成 Excel） -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+const API_URL  = '/api/customers';
+const LOCAL_PATH = 'E:\\新建文件夹\\customers.json';
+
+const DEFAULT_CUSTOMERS = [
+  { name:'张三', phone:'13800138001', plan:'基础版', note:'微信来源', date:'2026-06-08' },
+  { name:'李四', phone:'13900139002', plan:'进阶版', note:'老客户推荐', date:'2026-06-05' },
+  { name:'王五', phone:'13700137003', plan:'旗舰版', note:'企业客户', date:'2026-06-01' },
+  { name:'赵六', phone:'13600136004', plan:'定制版', note:'面议中', date:'2026-05-28' },
+  { name:'孙七', phone:'13500135005', plan:'基础版', note:'', date:'2026-05-20' },
+];
+
+// ═══ 数据加载/保存 → 直接读写 E:\新建文件夹\customers.json ═══
+
+async function loadData() {
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    return (data && data.length) ? data : DEFAULT_CUSTOMERS;
+  } catch {
+    return DEFAULT_CUSTOMERS;
+  }
+}
+
+async function saveData(data) {
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    showToast('✅ 已保存到 E:\\新建文件夹\\customers.json');
+  } catch {
+    showToast('⚠ 保存失败，请检查后台是否启动');
+  }
+}
+
+// ═══ 渲染 ═══
+let currentData = DEFAULT_CUSTOMERS;
+
+async function render() {
+  currentData = await loadData();
+  const container = document.getElementById('tableContainer');
+
+  if (!currentData.length) {
+    container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>暂无客户数据，上传 CSV 或手动添加</p></div>';
+  } else {
+    const rows = currentData.map((c, i) => `
+      <tr>
+        <td class="cust-name">${esc(c.name)}</td>
+        <td>${esc(c.phone || '—')}</td>
+        <td>${esc(c.plan || '—')}</td>
+        <td>${esc(c.note || '—')}</td>
+        <td>${esc(c.date || '')}</td>
+        <td>
+          <div class="row-actions">
+            <button class="row-btn edit" onclick="editCustomer(${i})">编辑</button>
+            <button class="row-btn del" onclick="deleteCustomer(${i})">删除</button>
+          </div>
+        </td>
+      </tr>`).join('');
+
+    container.innerHTML = `
+      <table>
+        <thead>
+          <tr><th>姓名</th><th>手机号码</th><th>套餐</th><th>备注</th><th>添加日期</th><th>操作</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  updateStats();
+  document.getElementById('tableCount').textContent = `(${currentData.length} 条记录)`;
+}
+
+function updateStats() {
+  document.getElementById('statCount').textContent = currentData.length;
+  document.getElementById('statPhone').textContent = currentData.filter(c => c.phone?.trim()).length;
+  const pkgs = new Set(currentData.map(c => c.plan).filter(Boolean));
+  document.getElementById('statPkg').textContent = pkgs.size;
+  document.getElementById('statRecent').textContent = currentData.length
+    ? currentData[currentData.length - 1].date || '—'
+    : '—';
+}
+
+function esc(s) { return (s || '').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ═══ 弹窗 ═══
+
+function openModal(idx) {
+  document.getElementById('modalTitle').textContent = (idx !== undefined) ? '✏️ 编辑客户' : '＋ 新增客户';
+  document.getElementById('fEditId').value   = (idx !== undefined) ? idx : '';
+  document.getElementById('fName').value     = (idx !== undefined) ? currentData[idx].name  : '';
+  document.getElementById('fPhone').value    = (idx !== undefined) ? currentData[idx].phone : '';
+  document.getElementById('fPlan').value     = (idx !== undefined) ? currentData[idx].plan  : '';
+  document.getElementById('fNote').value     = (idx !== undefined) ? currentData[idx].note || '' : '';
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+async function saveCustomer() {
+  const idx  = document.getElementById('fEditId').value;
+  const name = document.getElementById('fName').value.trim();
+  const phone= document.getElementById('fPhone').value.trim();
+  const plan = document.getElementById('fPlan').value;
+  const note = document.getElementById('fNote').value.trim();
+
+  if (!name) { alert('请填写客户姓名'); return; }
+  if (!phone){ alert('请填写手机号码'); return; }
+
+  const entry = {
+    name, phone, plan,
+    note,
+    date: new Date().toISOString().split('T')[0]
+  };
+
+  if (idx !== '') currentData[idx] = entry;
+  else currentData.push(entry);
+
+  await saveData(currentData);
+  await render();
+  closeModal();
+}
+
+function editCustomer(idx) { openModal(idx); }
+
+async function deleteCustomer(idx) {
+  if (!confirm(`确定删除「${currentData[idx].name}」？`)) return;
+  currentData.splice(idx, 1);
+  await saveData(currentData);
+  await render();
+}
+
+// ═══ CSV 上传 ═══
+
+const dropArea = document.getElementById('dropArea');
+dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.style.background='#ddd6fe'; });
+dropArea.addEventListener('dragleave', () => dropArea.style.background = '#eef2ff');
+dropArea.addEventListener('drop', e => {
+  e.preventDefault();
+  dropArea.style.background = '#eef2ff';
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.csv')) readCSV(file);
+  else alert('请拖入 .csv 文件');
+});
+
+function handleCSV(e) {
+  const file = e.target.files[0];
+  if (file) readCSV(file);
+  e.target.value = '';
+}
+
+function readCSV(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) { alert('CSV 至少包含表头 + 一行数据'); return; }
+
+    // 检测是否有表头（第一行包含"姓名"或"号码"或"套餐"关键词）
+    let startIdx = 0;
+    const firstLine = lines[0].toLowerCase();
+    if (firstLine.includes('姓名') || firstLine.includes('名字') || firstLine.includes('name') ||
+        firstLine.includes('号码') || firstLine.includes('电话') || firstLine.includes('phone') ||
+        firstLine.includes('套餐')) {
+      startIdx = 1;
+    }
+
+    const imported = [];
+    for (let i = startIdx; i < lines.length; i++) {
+      const parts = lines[i].split(',').map(s => s.replace(/^"|"$/g, '').trim());
+      if (parts.length >= 2 && parts[0]) {
+        imported.push({
+          name: parts[0] || '',
+          phone: parts[1] || '',
+          plan: parts[2] || '',
+          note: parts[3] || '',
+          date: new Date().toISOString().split('T')[0]
+        });
+      }
+    }
+
+    if (!imported.length) { alert('未找到有效数据行'); return; }
+
+    currentData.push(...imported);
+    saveData(currentData);
+    render();
+    showToast(`✅ 导入 ${imported.length} 条客户记录`);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ═══ 导出 ═══
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(currentData, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'customers.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('📁 JSON 已下载，请保存到 E:\\新建文件夹');
+}
+
+// ═══ Excel 导出（SheetJS） ═══
+function exportExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('SheetJS 库加载中，请稍后再试，或检查网络连接。');
+    return;
+  }
+  const header = ['姓名', '手机号码', '套餐', '备注', '添加日期'];
+  const rows  = currentData.map(c => [c.name, c.phone, c.plan||'', c.note||'', c.date||'']);
+  const wsData = [header, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // 设置列宽
+  ws['!cols'] = [
+    { wch: 12 }, // 姓名
+    { wch: 16 }, // 手机号码
+    { wch: 14 }, // 套餐
+    { wch: 24 }, // 备注
+    { wch: 14 }, // 添加日期
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '客户列表');
+  XLSX.writeFile(wb, 'customers.xlsx');
+  showToast('📊 Excel 文件已下载 (customers.xlsx)');
+}
+
+function exportCSV() {
+  const header = '姓名,手机号码,套餐,备注,添加日期';
+  const rows = currentData.map(c => `"${c.name}","${c.phone}","${c.plan||''}","${c.note||''}","${c.date||''}"`);
+  const csv = '\uFEFF' + header + '\r\n' + rows.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'customers.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('📁 CSV 已下载，请保存到 E:\\新建文件夹');
+}
+
+// ═══ 搜索 ═══
+
+function search() {
+  const kw = document.getElementById('searchInput').value.trim().toLowerCase();
+  const data = currentData;
+  const filtered = kw ? data.filter(c =>
+    c.name.toLowerCase().includes(kw) ||
+    (c.phone||'').includes(kw) ||
+    (c.plan||'').includes(kw)
+  ) : data;
+
+  const container = document.getElementById('tableContainer');
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty"><div class="icon">🔍</div><p>未找到匹配的客户</p></div>';
+  } else {
+    container.innerHTML = `<table><thead><tr><th>姓名</th><th>手机号码</th><th>套餐</th><th>备注</th><th>添加日期</th><th>操作</th></tr></thead>
+    <tbody>${filtered.map((c,i) => {
+      const origIdx = data.indexOf(c);
+      return `<tr>
+        <td class="cust-name">${esc(c.name)}</td>
+        <td>${esc(c.phone||'—')}</td>
+        <td>${esc(c.plan||'—')}</td>
+        <td>${esc(c.note||'—')}</td>
+        <td>${esc(c.date||'')}</td>
+        <td><div class="row-actions">
+          <button class="row-btn edit" onclick="editCustomer(${origIdx})">编辑</button>
+          <button class="row-btn del" onclick="deleteCustomer(${origIdx})">删除</button>
+        </div></td></tr>`;
+    }).join('')}</tbody></table>`;
+  }
+  document.getElementById('tableCount').textContent = `(${filtered.length} 条记录)`;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// 点击遮罩关闭
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ═══ 百度网盘集成 ═══
+
+let baiduBound = false;
+
+async function checkBaiduStatus() {
+  try {
+    const res = await fetch('/api/baidu/status');
+    const data = await res.json();
+    baiduBound = data.bound;
+    updateBaiduUI();
+    // 检查回调参数
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auth_success') === '1') {
+      showToast('✅ 百度网盘绑定成功！');
+      // 清除 URL 参数
+      window.history.replaceState({}, '', '/customer.html');
+    } else if (params.get('auth_error')) {
+      showToast('❌ 绑定失败: ' + decodeURIComponent(params.get('auth_error')));
+      window.history.replaceState({}, '', '/customer.html');
+    }
+  } catch {
+    updateBaiduUI();
+  }
+}
+
+function updateBaiduUI() {
+  const badge = document.getElementById('baiduBadge');
+  if (baiduBound) {
+    badge.innerHTML = '☁️ 已绑定百度网盘';
+    badge.style.color = '#059669';
+    badge.style.background = '#d1fae5';
+  } else {
+    badge.innerHTML = '☁️ 点击绑定百度网盘';
+    badge.style.color = '#6b7280';
+    badge.style.background = '#f0f0f5';
+  }
+}
+
+function handleBaiduBind() {
+  if (baiduBound) {
+    if (confirm('确定要解除百度网盘绑定吗？\n解绑后需重新授权才能上传。')) {
+      unbindBaidu();
+    }
+  } else {
+    // 跳转到授权页
+    window.location.href = '/api/baidu/auth';
+  }
+}
+
+async function unbindBaidu() {
+  try {
+    const res = await fetch('/api/baidu/unbind', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      baiduBound = false;
+      updateBaiduUI();
+      showToast('🔓 已解除百度网盘绑定');
+    }
+  } catch {
+    showToast('⚠ 解绑失败');
+  }
+}
+
+async function exportToBaidu() {
+  if (!baiduBound) {
+    if (confirm('尚未绑定百度网盘，是否现在绑定？')) {
+      window.location.href = '/api/baidu/auth';
+    }
+    return;
+  }
+
+  if (!currentData.length) {
+    showToast('⚠ 没有数据可导出');
+    return;
+  }
+
+  const btn = document.getElementById('btnBaiduExport');
+  btn.disabled = true;
+  btn.textContent = '⏳ 上传中…';
+  showToast('☁️ 正在生成 Excel 并上传到百度网盘…');
+
+  try {
+    const res = await fetch('/api/baidu/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(currentData)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('✅ 已上传到百度网盘: ' + data.path);
+    } else {
+      if (data.error && data.error.includes('未绑定')) {
+        baiduBound = false;
+        updateBaiduUI();
+      }
+      showToast('❌ ' + (data.error || '上传失败'));
+    }
+  } catch {
+    showToast('❌ 网络错误，上传失败');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '☁️ 导出到网盘';
+  }
+}
+
+// ═══ 初始化 ═══
+checkBaiduStatus();
+render();
+</script>
+</body>
+</html>
