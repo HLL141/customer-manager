@@ -278,6 +278,12 @@ const DEFAULT_CUSTOMERS = [
   { name:'孙七', phone:'13500135005', plan:'基础版', note:'', date:'2026-05-20' },
 ];
 
+function formatDatetime() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 // ═══ 数据加载/保存 → 直接读写 E:\新建文件夹\customers.json ═══
 
 async function loadData() {
@@ -382,7 +388,7 @@ async function saveCustomer() {
   const entry = {
     name, phone, plan,
     note,
-    date: new Date().toISOString().split('T')[0]
+    date: formatDatetime()
   };
 
   if (idx !== '') currentData[idx] = entry;
@@ -446,7 +452,7 @@ function readCSV(file) {
           phone: parts[1] || '',
           plan: parts[2] || '',
           note: parts[3] || '',
-          date: new Date().toISOString().split('T')[0]
+          date: formatDatetime()
         });
       }
     }
