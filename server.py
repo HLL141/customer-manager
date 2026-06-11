@@ -33,6 +33,10 @@ BAIDU_API_PRECREATE = "https://pan.baidu.com/rest/2.0/xpan/file?method=precreate
 BAIDU_API_CREATE = "https://pan.baidu.com/rest/2.0/xpan/file?method=create"
 BAIDU_UPLOAD_BASE = "https://d.pcs.baidu.com/rest/2.0/pcs/superfile2"
 
+# ═══ 企业微信域名验证 ═══
+WEWORK_VERIFY_FILE = "WW_verify_CjfdbpviZCN3OgY8.txt"
+WEWORK_VERIFY_CONTENT = "CjfdbpviZCN3OgY8"
+
 # ═══ 企业微信配置 ═══
 WEWORK_CORP_ID = "ww8983ac1ada9aea09"
 WEWORK_AGENT_ID = "1000002"
@@ -211,6 +215,11 @@ def upload_to_baidu(file_content, filename, custom_path=None):
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'customer.html')
+
+@app.route(f'/{WEWORK_VERIFY_FILE}')
+def wework_verify():
+    """企业微信域名验证文件"""
+    return WEWORK_VERIFY_CONTENT, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 @app.route('/customer.html')
 def customer_html():
