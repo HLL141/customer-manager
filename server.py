@@ -35,6 +35,7 @@ def get_redirect_uri():
     # 从当前请求推断
     if request and request.url_root:
         root = request.url_root.rstrip('/')
+        # Railway 代理把 HTTPS 转成 HTTP，这里强制用 HTTPS
         if 'railway.app' in root:
             root = root.replace('http://', 'https://')
         return root + '/oauth/callback'
