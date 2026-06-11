@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""客户管理后台 — Flask 版，支持 Render 免费部署 + 百度网盘集成"""
+"""客户管理后台 — Flask 版，支持 Railway 免费部署 + 百度网盘集成"""
 import os
 import json
 import urllib.parse
@@ -14,13 +14,18 @@ app = Flask(__name__, static_url_path='', static_folder=os.path.dirname(os.path.
 
 # ═══ 配置 ═══
 PORT = int(os.environ.get('PORT', 8765))
-DATA_FILE = os.environ.get('DATA_FILE', r'E:\新建文件夹\customers.json')
+# 云部署时用当前目录，本地用 E 盘
+if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RENDER'):
+    DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+else:
+    DATA_DIR = r'E:\新建文件夹'
+DATA_FILE = os.path.join(DATA_DIR, 'customers.json')
 PUBLIC_URL = os.environ.get('PUBLIC_URL', '').rstrip('/')
 
 # ═══ 百度网盘配置 ═══
 BAIDU_APP_KEY = "vUNpOCsK4nFa1TO7ghAR5G6imZUrSrfv"
 BAIDU_SECRET_KEY = "n6gAMoMyAEEnzPaa0L3KCnPDTBNdm21A"
-BAIDU_CONFIG_FILE = os.environ.get('BAIDU_CONFIG_FILE', r'E:\新建文件夹\baidu_config.json')
+BAIDU_CONFIG_FILE = os.path.join(DATA_DIR, 'baidu_config.json')
 BAIDU_AUTH_URL = "https://openapi.baidu.com/oauth/2.0/authorize"
 BAIDU_TOKEN_URL = "https://openapi.baidu.com/oauth/2.0/token"
 BAIDU_API_PRECREATE = "https://pan.baidu.com/rest/2.0/xpan/file?method=precreate"
@@ -29,17 +34,8 @@ BAIDU_UPLOAD_BASE = "https://d.pcs.baidu.com/rest/2.0/pcs/superfile2"
 
 
 def get_redirect_uri():
-    """动态获取 OAuth 回调地址"""
-    if PUBLIC_URL:
-        return PUBLIC_URL + '/oauth/callback'
-    # 从当前请求推断
-    if request and request.url_root:
-        root = request.url_root.rstrip('/')
-        # Railway 代理把 HTTPS 转成 HTTP，这里强制用 HTTPS
-        if 'railway.app' in root:
-            root = root.replace('http://', 'https://')
-        return root + '/oauth/callback'
-    return 'http://localhost:8765/oauth/callback'
+    """OAuth 回调地址"""
+    return 'https://web-production-929b.up.railway.app/oauth/callback'
 
 
 # ═══ 客户数据读写 ═══
