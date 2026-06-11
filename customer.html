@@ -87,6 +87,10 @@ main { max-width: 1000px; margin: 0 auto; padding: 24px 20px 60px; }
 .table-warp {
   background: #fff; border-radius: 12px; border: 1px solid #e8e8ee; overflow: hidden;
 }
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .table-top {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 20px; border-bottom: 1px solid #f0f0f5;
@@ -94,7 +98,7 @@ main { max-width: 1000px; margin: 0 auto; padding: 24px 20px 60px; }
 .table-top h3 { font-size: 15px; font-weight: 700; }
 .table-top .count { font-size: 12px; color: #888; }
 
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; min-width: 700px; }
 thead th {
   background: #fafafc; padding: 10px 16px; text-align: left;
   font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase;
@@ -337,12 +341,14 @@ async function render() {
       </tr>`).join('');
 
     container.innerHTML = `
-      <table>
-        <thead>
-          <tr><th>姓名</th><th>手机号码</th><th>套餐</th><th>备注</th><th>添加日期</th><th>添加人</th><th>操作</th></tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>姓名</th><th>手机号码</th><th>套餐</th><th>备注</th><th>添加日期</th><th>添加人</th><th>操作</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
   }
 
   updateStats();
@@ -536,7 +542,7 @@ function search() {
   if (!filtered.length) {
     container.innerHTML = '<div class="empty"><div class="icon">🔍</div><p>未找到匹配的客户</p></div>';
   } else {
-    container.innerHTML = `<table><thead><tr><th>姓名</th><th>手机号码</th><th>套餐</th><th>备注</th><th>添加日期</th><th>添加人</th><th>操作</th></tr></thead>
+    container.innerHTML = `<div class="table-scroll"><table><thead><tr><th>姓名</th><th>手机号码</th><th>套餐</th><th>备注</th><th>添加日期</th><th>添加人</th><th>操作</th></tr></thead>
     <tbody>${filtered.map((c,i) => {
       const origIdx = data.indexOf(c);
       return `<tr>
@@ -550,7 +556,7 @@ function search() {
           <button class="row-btn edit" onclick="editCustomer(${origIdx})">编辑</button>
           <button class="row-btn del" onclick="deleteCustomer(${origIdx})">删除</button>
         </div></td></tr>`;
-    }).join('')}</tbody></table>`;
+    }).join('')}</tbody></table></div>`;
   }
   document.getElementById('tableCount').textContent = `(${filtered.length} 条记录)`;
 }
