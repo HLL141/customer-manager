@@ -644,6 +644,14 @@ async function exportToBaidu() {
     return;
   }
 
+  // 弹窗让用户选择网盘路径
+  const defaultPath = '/apps/客户数据云备份';
+  const customPath = prompt(
+    '请输入百度网盘保存路径（留空使用默认）：\n\n默认路径：' + defaultPath + '\n示例：/工作文档/客户资料/2026年',
+    defaultPath
+  );
+  if (customPath === null) return; // 用户点了取消
+
   const btn = document.getElementById('btnBaiduExport');
   btn.disabled = true;
   btn.textContent = '⏳ 上传中…';
@@ -653,7 +661,7 @@ async function exportToBaidu() {
     const res = await fetch('/api/baidu/upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(currentData)
+      body: JSON.stringify({ customers: currentData, path: customPath.trim() || defaultPath })
     });
     const data = await res.json();
     if (data.ok) {
