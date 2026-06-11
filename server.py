@@ -418,6 +418,34 @@ def wework_logout():
     return redirect('/')
 
 
+@app.route('/api/export/excel')
+def api_export_excel():
+    """后端生成 Excel 并返回下载（兼容企业微信浏览器）"""
+    customers = load_customers()
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "客户列表"
+    ws.append(["姓名", "手机号码", "套餐", "备注", "添加日期"])
+    for c in customers:
+        ws.append([c.get('name', ''), c.get('phone', ''), c.get('plan', ''),
+                   c.get('note', ''), c.get('date', '')])
+    ws.column_dimensions['A'].width = 12
+    ws.column_dimensions['B'].width = 16
+    ws.column_dimensions['C'].width = 14
+    ws.column_dimensions['D'].width = 24
+    ws.column_dimensions['E'].width = 16
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    return (buf.getvalue(), 200, {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': f'attachment; filename="客户数据_{timestamp}.xlsx"',
+    })
+
+
 if __name__ == '__main__':
     print(f"启动端口: {PORT}")
     print(f"公网地址: {PUBLIC_URL or '本地模式'}")
