@@ -314,16 +314,15 @@ def baidu_upload():
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "客户列表"
-        ws.append(["姓名", "手机号码", "套餐", "备注", "添加日期", "添加人"])
+        ws.append(["姓名", "手机号码", "套餐", "备注", "添加日期"])
         for c in customers:
             ws.append([c.get('name', ''), c.get('phone', ''), c.get('plan', ''),
-                       c.get('note', ''), c.get('date', ''), c.get('added_by', '')])
+                       c.get('note', ''), c.get('date', '')])
         ws.column_dimensions['A'].width = 12
         ws.column_dimensions['B'].width = 16
         ws.column_dimensions['C'].width = 14
         ws.column_dimensions['D'].width = 24
         ws.column_dimensions['E'].width = 16
-        ws.column_dimensions['F'].width = 14
 
         buf = io.BytesIO()
         wb.save(buf)
