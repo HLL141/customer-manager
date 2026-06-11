@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""客户管理后台 — Flask 版，支持 Railway 免费部署 + 百度网盘集成"""
+"""客户管理后台 — Flask 版，支持 Render 免费部署 + 百度网盘集成"""
 import os
 import json
 import urllib.parse
@@ -14,7 +14,7 @@ app = Flask(__name__, static_url_path='', static_folder=os.path.dirname(os.path.
 
 # ═══ 配置 ═══
 PORT = int(os.environ.get('PORT', 8765))
-# 云部署时用当前目录，本地用 E 盘
+# 云部署时用相对路径（当前目录），本地用 E 盘
 if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RENDER'):
     DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 else:
@@ -34,7 +34,7 @@ BAIDU_UPLOAD_BASE = "https://d.pcs.baidu.com/rest/2.0/pcs/superfile2"
 
 
 def get_redirect_uri():
-    """OAuth 回调地址"""
+    """OAuth 回调地址 — 云端固定地址"""
     return 'https://web-production-929b.up.railway.app/oauth/callback'
 
 
@@ -112,14 +112,15 @@ def get_valid_token():
 
 
 # ═══ 百度网盘文件上传 ═══
-def upload_to_baidu(file_content, filename):
+def upload_to_baidu(file_content, filename, custom_path=None):
     token = get_valid_token()
     if not token:
         return {"ok": False, "error": "未绑定百度网盘或 Token 已过期，请重新绑定"}
 
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     name, ext = os.path.splitext(filename)
-    remote_path = f"/apps/客户数据云备份/{name}_{timestamp}{ext}"
+    base_dir = custom_path.rstrip('/') if custom_path else '/apps/客户数据云备份'
+    remote_path = f"{base_dir}/{name}_{timestamp}{ext}"
     file_size = len(file_content)
     content_md5 = hashlib.md5(file_content).hexdigest()
 
@@ -261,7 +262,15 @@ def baidu_status():
 @app.route('/api/baidu/upload', methods=['POST'])
 def baidu_upload():
     try:
-        customers = request.get_json()
+        body = request.get_json()
+        # 兼容新旧格式：旧格式直接是数组，新格式是 {customers: [...], path: "..."}
+        if isinstance(body, list):
+            customers = body
+            custom_path = None
+        else:
+            customers = body.get('customers', [])
+            custom_path = body.get('path', None)
+
         if not isinstance(customers, list):
             return jsonify({"ok": False, "error": "数据格式错误"}), 400
 
@@ -281,7 +290,7 @@ def baidu_upload():
         buf = io.BytesIO()
         wb.save(buf)
         buf.seek(0)
-        result = upload_to_baidu(buf.read(), "客户数据.xlsx")
+        result = upload_to_baidu(buf.read(), "客户数据.xlsx", custom_path)
         return jsonify(result), 200 if result.get('ok') else 400
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
