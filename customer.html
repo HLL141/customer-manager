@@ -180,7 +180,6 @@ tbody tr:last-child td { border-bottom: none; }
 <header>
   <div class="logo">📋 客户信息管理</div>
   <div class="header-actions">
-    <span class="save-path" id="weworkBadge" style="cursor:pointer;display:none;" onclick="weworkLogin()" title="企业微信登录">👤 未登录</span>
     <span class="save-path" id="baiduBadge" style="cursor:pointer;" onclick="handleBaiduBind()" title="点击绑定/管理百度网盘">☁️ 检测中…</span>
     <span class="save-path">💾 E:\新建文件夹\customers.json</span>
   </div>
@@ -331,7 +330,6 @@ async function render() {
         <td>${esc(c.plan || '—')}</td>
         <td>${esc(c.note || '—')}</td>
         <td style="font-size:11px;color:#888;">${esc(c.date || '')}</td>
-        <td style="font-size:11px;color:#666;">${esc(c.added_by || '—')}</td>
         <td>
           <div class="row-actions">
             <button class="row-btn edit" onclick="editCustomer(${i})">编辑</button>
@@ -344,7 +342,7 @@ async function render() {
       <div class="table-scroll">
         <table>
           <thead>
-            <tr><th>姓名</th><th>手机号码</th><th>套餐</th><th>备注</th><th>添加日期</th><th>添加人</th><th>操作</th></tr>
+            <tr><th>姓名</th><th>手机号码</th><th>套餐</th><th>备注</th><th>添加日期</th><th>操作</th></tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
@@ -396,8 +394,7 @@ async function saveCustomer() {
   const entry = {
     name, phone, plan,
     note,
-    date: formatDatetime(),
-    added_by: weworkName || '未登录'
+    date: formatDatetime()
   };
 
   if (idx !== '') currentData[idx] = entry;
@@ -494,8 +491,8 @@ function exportExcel() {
     alert('SheetJS 库加载中，请稍后再试，或检查网络连接。');
     return;
   }
-  const header = ['姓名', '手机号码', '套餐', '备注', '添加日期', '添加人'];
-  const rows  = currentData.map(c => [c.name, c.phone, c.plan||'', c.note||'', c.date||'', c.added_by||'']);
+  const header = ['姓名', '手机号码', '套餐', '备注', '添加日期'];
+  const rows  = currentData.map(c => [c.name, c.phone, c.plan||'', c.note||'', c.date||'']);
   const wsData = [header, ...rows];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
@@ -515,8 +512,8 @@ function exportExcel() {
 }
 
 function exportCSV() {
-  const header = '姓名,手机号码,套餐,备注,添加日期,添加人';
-  const rows = currentData.map(c => `"${c.name}","${c.phone}","${c.plan||''}","${c.note||''}","${c.date||''}","${c.added_by||''}"`);
+  const header = '姓名,手机号码,套餐,备注,添加日期';
+  const rows = currentData.map(c => `"${c.name}","${c.phone}","${c.plan||''}","${c.note||''}","${c.date||''}"`);
   const csv = '\uFEFF' + header + '\r\n' + rows.join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -542,7 +539,7 @@ function search() {
   if (!filtered.length) {
     container.innerHTML = '<div class="empty"><div class="icon">🔍</div><p>未找到匹配的客户</p></div>';
   } else {
-    container.innerHTML = `<div class="table-scroll"><table><thead><tr><th>姓名</th><th>手机号码</th><th>套餐</th><th>备注</th><th>添加日期</th><th>添加人</th><th>操作</th></tr></thead>
+    container.innerHTML = `<div class="table-scroll"><table><thead><tr><th>姓名</th><th>手机号码</th><th>套餐</th><th>备注</th><th>添加日期</th><th>操作</th></tr></thead>
     <tbody>${filtered.map((c,i) => {
       const origIdx = data.indexOf(c);
       return `<tr>
@@ -551,7 +548,6 @@ function search() {
         <td>${esc(c.plan||'—')}</td>
         <td>${esc(c.note||'—')}</td>
         <td style="font-size:11px;color:#888;">${esc(c.date||'')}</td>
-        <td style="font-size:11px;color:#666;">${esc(c.added_by||'—')}</td>
         <td><div class="row-actions">
           <button class="row-btn edit" onclick="editCustomer(${origIdx})">编辑</button>
           <button class="row-btn del" onclick="deleteCustomer(${origIdx})">删除</button>
@@ -691,68 +687,8 @@ async function exportToBaidu() {
   }
 }
 
-// ═══ 企业微信登录 ═══
-let weworkUserid = '';
-let weworkName = '';
-
-function weworkLogin() {
-  window.location.href = '/api/wework/login';
-}
-
-function weworkLogout() {
-  if (confirm('确定退出企业微信登录？')) {
-    window.location.href = '/api/wework/logout';
-  }
-}
-
-async function checkWeworkStatus() {
-  try {
-    const res = await fetch('/api/wework/user');
-    const data = await res.json();
-    if (data.logged_in) {
-      weworkUserid = data.userid;
-      weworkName = data.name;
-    }
-  } catch {
-    // 忽略网络错误
-  }
-  updateWeworkUI();
-}
-
-function updateWeworkUI() {
-  const badge = document.getElementById('weworkBadge');
-  badge.style.display = 'inline-block';
-  if (weworkName) {
-    badge.innerHTML = '👤 ' + weworkName;
-    badge.style.color = '#059669';
-    badge.style.background = '#d1fae5';
-    badge.title = '点击退出登录';
-    badge.onclick = weworkLogout;
-  } else {
-    badge.innerHTML = '👤 企业微信登录';
-    badge.style.color = '#6b7280';
-    badge.style.background = '#f0f0f5';
-    badge.title = '点击登录企业微信';
-    badge.onclick = weworkLogin;
-  }
-}
-
-// 检测登录回调
-(function() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('wework_login') === '1') {
-    showToast('✅ 企业微信登录成功');
-    window.history.replaceState({}, '', '/customer.html');
-    setTimeout(() => checkWeworkStatus(), 500);
-  } else if (params.get('wework_error')) {
-    showToast('❌ 登录失败: ' + decodeURIComponent(params.get('wework_error')));
-    window.history.replaceState({}, '', '/customer.html');
-  }
-})();
-
 // ═══ 初始化 ═══
 checkBaiduStatus();
-checkWeworkStatus();
 render();
 </script>
 </body>
