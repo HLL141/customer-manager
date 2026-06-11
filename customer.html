@@ -145,18 +145,6 @@ tbody tr:last-child td { border-bottom: none; }
 .form-group input:focus, .form-group select:focus { border-color: #4f46e5; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 
-/* ── CSV 上传区 ── */
-.drop-area {
-  border: 2px dashed #c7d2fe; border-radius: 12px; padding: 28px;
-  text-align: center; background: #eef2ff; margin-bottom: 20px;
-  cursor: pointer; transition: .15s;
-}
-.drop-area:hover { background: #e0e7ff; }
-.drop-area .icon { font-size: 36px; margin-bottom: 8px; }
-.drop-area p { font-size: 13px; color: #666; }
-.drop-area strong { color: #4f46e5; }
-.drop-area .hint { font-size: 11px; color: #aaa; margin-top: 4px; }
-
 /* ── Toast ── */
 .toast {
   position: fixed; bottom: 28px; right: 28px; background: #1a1a2e; color: #fff;
@@ -196,14 +184,6 @@ tbody tr:last-child td { border-bottom: none; }
     </div>
   </div>
 
-  <!-- CSV 上传 -->
-  <div class="drop-area" id="dropArea" onclick="document.getElementById('csvInput').click()">
-    <div class="icon">📂</div>
-    <p>拖拽 CSV 文件到此处，或 <strong>点击选择文件</strong> 批量导入</p>
-    <p class="hint">CSV 格式：姓名,手机号,套餐 (首行为列头)</p>
-    <input type="file" id="csvInput" accept=".csv" style="display:none" onchange="handleCSV(event)">
-  </div>
-
   <!-- 统计 -->
   <div class="stats">
     <div class="stat-card"><div class="label">👥 客户总数</div><div class="val highlight" id="statCount">0</div></div>
@@ -219,12 +199,11 @@ tbody tr:last-child td { border-bottom: none; }
       <div>
         <button class="btn btn-ghost" onclick="exportExcel()" style="font-size:12px;padding:6px 14px;">📊 导出 Excel</button>
         <button class="btn btn-ghost" onclick="exportToBaidu()" id="btnBaiduExport" style="font-size:12px;padding:6px 14px;" title="上传 Excel 到百度网盘">☁️ 导出到网盘</button>
-        <button class="btn btn-ghost" onclick="exportJSON()" style="font-size:12px;padding:6px 14px;">💾 保存 JSON</button>
         <button class="btn btn-primary" onclick="openModal()" style="font-size:12px;padding:6px 16px;">＋ 新增客户</button>
       </div>
     </div>
     <div id="tableContainer">
-      <div class="empty"><div class="icon">📭</div><p>暂无客户数据，上传 CSV 或手动添加</p></div>
+      <div class="empty"><div class="icon">📭</div><p>暂无客户数据，点击新增客户按钮添加</p></div>
     </div>
   </div>
 </main>
@@ -320,7 +299,7 @@ async function render() {
   const container = document.getElementById('tableContainer');
 
   if (!currentData.length) {
-    container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>暂无客户数据，上传 CSV 或手动添加</p></div>';
+    container.innerHTML = '<div class="empty"><div class="icon">📭</div><p>暂无客户数据，点击新增客户按钮添加</p></div>';
   } else {
     const rows = currentData.map((c, i) => `
       <tr>
@@ -413,77 +392,6 @@ async function deleteCustomer(idx) {
   await render();
 }
 
-// ═══ CSV 上传 ═══
-
-const dropArea = document.getElementById('dropArea');
-dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.style.background='#ddd6fe'; });
-dropArea.addEventListener('dragleave', () => dropArea.style.background = '#eef2ff');
-dropArea.addEventListener('drop', e => {
-  e.preventDefault();
-  dropArea.style.background = '#eef2ff';
-  const file = e.dataTransfer.files[0];
-  if (file && file.name.endsWith('.csv')) readCSV(file);
-  else alert('请拖入 .csv 文件');
-});
-
-function handleCSV(e) {
-  const file = e.target.files[0];
-  if (file) readCSV(file);
-  e.target.value = '';
-}
-
-function readCSV(file) {
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const text = e.target.result;
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
-    if (lines.length < 2) { alert('CSV 至少包含表头 + 一行数据'); return; }
-
-    // 检测是否有表头（第一行包含"姓名"或"号码"或"套餐"关键词）
-    let startIdx = 0;
-    const firstLine = lines[0].toLowerCase();
-    if (firstLine.includes('姓名') || firstLine.includes('名字') || firstLine.includes('name') ||
-        firstLine.includes('号码') || firstLine.includes('电话') || firstLine.includes('phone') ||
-        firstLine.includes('套餐')) {
-      startIdx = 1;
-    }
-
-    const imported = [];
-    for (let i = startIdx; i < lines.length; i++) {
-      const parts = lines[i].split(',').map(s => s.replace(/^"|"$/g, '').trim());
-      if (parts.length >= 2 && parts[0]) {
-        imported.push({
-          name: parts[0] || '',
-          phone: parts[1] || '',
-          plan: parts[2] || '',
-          note: parts[3] || '',
-          date: formatDatetime()
-        });
-      }
-    }
-
-    if (!imported.length) { alert('未找到有效数据行'); return; }
-
-    currentData.push(...imported);
-    saveData(currentData);
-    render();
-    showToast(`✅ 导入 ${imported.length} 条客户记录`);
-  };
-  reader.readAsText(file, 'UTF-8');
-}
-
-// ═══ 导出 ═══
-
-function exportJSON() {
-  const blob = new Blob([JSON.stringify(currentData, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'customers.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  showToast('📁 JSON 已下载，请保存到 E:\\新建文件夹');
-}
-
 // ═══ Excel 导出（SheetJS） ═══
 function exportExcel() {
   if (typeof XLSX === 'undefined') {
@@ -495,32 +403,18 @@ function exportExcel() {
   const wsData = [header, ...rows];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-  // 设置列宽
   ws['!cols'] = [
-    { wch: 12 }, // 姓名
-    { wch: 16 }, // 手机号码
-    { wch: 14 }, // 套餐
-    { wch: 24 }, // 备注
-    { wch: 14 }, // 添加日期
+    { wch: 12 },
+    { wch: 16 },
+    { wch: 14 },
+    { wch: 24 },
+    { wch: 14 },
   ];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '客户列表');
   XLSX.writeFile(wb, 'customers.xlsx');
   showToast('📊 Excel 文件已下载 (customers.xlsx)');
-}
-
-function exportCSV() {
-  const header = '姓名,手机号码,套餐,备注,添加日期';
-  const rows = currentData.map(c => `"${c.name}","${c.phone}","${c.plan||''}","${c.note||''}","${c.date||''}"`);
-  const csv = '\uFEFF' + header + '\r\n' + rows.join('\r\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'customers.csv';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  showToast('📁 CSV 已下载，请保存到 E:\\新建文件夹');
 }
 
 // ═══ 搜索 ═══
@@ -560,7 +454,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
 });
 
-// 点击遮罩关闭
 document.getElementById('modal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
@@ -583,11 +476,9 @@ async function checkBaiduStatus() {
     const data = await res.json();
     baiduBound = data.bound;
     updateBaiduUI();
-    // 检查回调参数
     const params = new URLSearchParams(window.location.search);
     if (params.get('auth_success') === '1') {
       showToast('✅ 百度网盘绑定成功！');
-      // 清除 URL 参数
       window.history.replaceState({}, '', '/customer.html');
     } else if (params.get('auth_error')) {
       showToast('❌ 绑定失败: ' + decodeURIComponent(params.get('auth_error')));
@@ -617,7 +508,6 @@ function handleBaiduBind() {
       unbindBaidu();
     }
   } else {
-    // 跳转到授权页
     window.location.href = '/api/baidu/auth';
   }
 }
@@ -649,13 +539,12 @@ async function exportToBaidu() {
     return;
   }
 
-  // 弹窗让用户选择网盘路径
   const defaultPath = '/apps/客户数据云备份';
   const customPath = prompt(
     '请输入百度网盘保存路径（留空使用默认）：\n\n默认路径：' + defaultPath + '\n示例：/工作文档/客户资料/2026年',
     defaultPath
   );
-  if (customPath === null) return; // 用户点了取消
+  if (customPath === null) return;
 
   const btn = document.getElementById('btnBaiduExport');
   btn.disabled = true;
