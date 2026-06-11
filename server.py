@@ -34,7 +34,10 @@ def get_redirect_uri():
         return PUBLIC_URL + '/oauth/callback'
     # 从当前请求推断
     if request and request.url_root:
-        return request.url_root.rstrip('/') + '/oauth/callback'
+        root = request.url_root.rstrip('/')
+        if 'railway.app' in root:
+            root = root.replace('http://', 'https://')
+        return root + '/oauth/callback'
     return 'http://localhost:8765/oauth/callback'
 
 
