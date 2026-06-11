@@ -8,9 +8,10 @@ import hashlib
 import io
 import time
 import openpyxl
-from flask import Flask, request, jsonify, send_from_directory, redirect
+from flask import Flask, request, jsonify, send_from_directory, redirect, session
 
 app = Flask(__name__, static_url_path='', static_folder=os.path.dirname(os.path.abspath(__file__)))
+app.secret_key = os.environ.get('SECRET_KEY', 'crm-secret-key-2026')
 
 # ═══ 配置 ═══
 PORT = int(os.environ.get('PORT', 8765))
@@ -32,6 +33,33 @@ BAIDU_API_PRECREATE = "https://pan.baidu.com/rest/2.0/xpan/file?method=precreate
 BAIDU_API_CREATE = "https://pan.baidu.com/rest/2.0/xpan/file?method=create"
 BAIDU_UPLOAD_BASE = "https://d.pcs.baidu.com/rest/2.0/pcs/superfile2"
 
+# ═══ 企业微信配置 ═══
+WEWORK_CORP_ID = "ww8983ac1ada9aea09"
+WEWORK_AGENT_ID = "1000002"
+WEWORK_SECRET = "3nngNAY81m_BxB2MfbSx5v5HqKp0mvIh-YcH690OUQY"
+WEWORK_AUTH_URL = "https://open.weixin.qq.com/connect/oauth2/authorize"
+WEWORK_TOKEN_URL = "https://qyapi.weixin.qq.com/cgi-bin/gettoken"
+WEWORK_USER_URL = "https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo"
+WEWORK_USER_DETAIL_URL = "https://qyapi.weixin.qq.com/cgi-bin/user/get"
+WEWORK_ACCESS_TOKEN = {"token": None, "expires_at": 0}
+
+
+def get_wework_access_token():
+    """获取企业微信 access_token（带缓存）"""
+    if WEWORK_ACCESS_TOKEN["token"] and time.time() < WEWORK_ACCESS_TOKEN["expires_at"] - 300:
+        return WEWORK_ACCESS_TOKEN["token"]
+    try:
+        url = f"{WEWORK_TOKEN_URL}?corpid={WEWORK_CORP_ID}&corpsecret={WEWORK_SECRET}"
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+        if result.get('access_token'):
+            WEWORK_ACCESS_TOKEN["token"] = result['access_token']
+            WEWORK_ACCESS_TOKEN["expires_at"] = time.time() + result.get('expires_in', 7200)
+            print("[OK] 企业微信 access_token 已获取")
+            return WEWORK_ACCESS_TOKEN["token"]
+    except Exception as e:
+        print(f"[WARN] 获取企业微信 token 失败: {e}")
+    return None
 
 def get_redirect_uri():
     """OAuth 回调地址 — 云端固定地址"""
@@ -277,15 +305,16 @@ def baidu_upload():
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "客户列表"
-        ws.append(["姓名", "手机号码", "套餐", "备注", "添加日期"])
+        ws.append(["姓名", "手机号码", "套餐", "备注", "添加日期", "添加人"])
         for c in customers:
             ws.append([c.get('name', ''), c.get('phone', ''), c.get('plan', ''),
-                       c.get('note', ''), c.get('date', '')])
+                       c.get('note', ''), c.get('date', ''), c.get('added_by', '')])
         ws.column_dimensions['A'].width = 12
         ws.column_dimensions['B'].width = 16
         ws.column_dimensions['C'].width = 14
         ws.column_dimensions['D'].width = 24
-        ws.column_dimensions['E'].width = 14
+        ws.column_dimensions['E'].width = 16
+        ws.column_dimensions['F'].width = 14
 
         buf = io.BytesIO()
         wb.save(buf)
@@ -303,6 +332,82 @@ def baidu_unbind():
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ═══ 企业微信 OAuth 登录 ═══
+@app.route('/api/wework/login')
+def wework_login():
+    """跳转到企业微信授权页面"""
+    redirect_uri = 'https://web-production-929b.up.railway.app/api/wework/callback'
+    auth_url = (
+        f"{WEWORK_AUTH_URL}?appid={WEWORK_CORP_ID}"
+        f"&redirect_uri={urllib.parse.quote(redirect_uri, safe='')}"
+        f"&response_type=code"
+        f"&scope=snsapi_userinfo"
+        f"&agentid={WEWORK_AGENT_ID}"
+        f"&state=login#wechat_redirect"
+    )
+    return redirect(auth_url)
+
+
+@app.route('/api/wework/callback')
+def wework_callback():
+    """企业微信回调，换取用户信息"""
+    code = request.args.get('code')
+    if not code:
+        return redirect('/?wework_error=未收到授权码')
+
+    try:
+        access_token = get_wework_access_token()
+        if not access_token:
+            return redirect('/?wework_error=获取企业微信token失败')
+
+        # Step1: 用 code 换取 userid
+        url = f"{WEWORK_USER_URL}?access_token={access_token}&code={code}"
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            user_result = json.loads(resp.read().decode('utf-8'))
+
+        userid = user_result.get('UserId')
+        if not userid:
+            err = user_result.get('errmsg', '未知错误')
+            return redirect(f'/?wework_error={urllib.parse.quote(err)}')
+
+        # Step2: 用 userid 获取用户详细信息
+        url = f"{WEWORK_USER_DETAIL_URL}?access_token={access_token}&userid={userid}"
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            detail = json.loads(resp.read().decode('utf-8'))
+
+        # 存入 session
+        session['wework_userid'] = userid
+        session['wework_name'] = detail.get('name', userid)
+        session['wework_avatar'] = detail.get('avatar', '')
+        session['wework_logged_in'] = True
+
+        print(f"[OK] 企业微信登录: {detail.get('name')} ({userid})")
+        return redirect('/?wework_login=1')
+
+    except Exception as e:
+        return redirect(f'/?wework_error={urllib.parse.quote(str(e))}')
+
+
+@app.route('/api/wework/user')
+def wework_user():
+    """获取当前登录的企业微信用户信息"""
+    if session.get('wework_logged_in'):
+        return jsonify({
+            "logged_in": True,
+            "userid": session.get('wework_userid'),
+            "name": session.get('wework_name'),
+            "avatar": session.get('wework_avatar'),
+        })
+    return jsonify({"logged_in": False})
+
+
+@app.route('/api/wework/logout')
+def wework_logout():
+    """退出登录"""
+    session.clear()
+    return redirect('/')
 
 
 if __name__ == '__main__':
