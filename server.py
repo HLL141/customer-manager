@@ -8,7 +8,7 @@ import hashlib
 import io
 import time
 import openpyxl
-from flask import Flask, request, jsonify, send_from_directory, redirect, session
+from flask import Flask, request, jsonify, send_from_directory, redirect, session, make_response
 
 app = Flask(__name__, static_url_path='', static_folder=os.path.dirname(os.path.abspath(__file__)))
 app.secret_key = os.environ.get('SECRET_KEY', 'crm-secret-key-2026')
@@ -440,10 +440,10 @@ def api_export_excel():
     buf.seek(0)
 
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    return (buf.getvalue(), 200, {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': f'attachment; filename="客户数据_{timestamp}.xlsx"',
-    })
+    response = make_response(buf.getvalue())
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename="客户数据_{timestamp}.xlsx"'
+    return response
 
 
 if __name__ == '__main__':
