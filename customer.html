@@ -394,27 +394,9 @@ async function deleteCustomer(idx) {
 
 // ═══ Excel 导出（SheetJS） ═══
 function exportExcel() {
-  if (typeof XLSX === 'undefined') {
-    alert('SheetJS 库加载中，请稍后再试，或检查网络连接。');
-    return;
-  }
-  const header = ['姓名', '手机号码', '套餐', '备注', '添加日期'];
-  const rows  = currentData.map(c => [c.name, c.phone, c.plan||'', c.note||'', c.date||'']);
-  const wsData = [header, ...rows];
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-  ws['!cols'] = [
-    { wch: 12 },
-    { wch: 16 },
-    { wch: 14 },
-    { wch: 24 },
-    { wch: 14 },
-  ];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '客户列表');
-  XLSX.writeFile(wb, 'customers.xlsx');
-  showToast('📊 Excel 文件已下载 (customers.xlsx)');
+  showToast('📊 正在生成 Excel...');
+  // 后端生成 Excel 返回下载，兼容企业微信浏览器
+  window.location.href = '/api/export/excel';
 }
 
 // ═══ 搜索 ═══
